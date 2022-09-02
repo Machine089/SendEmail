@@ -16,7 +16,7 @@ class SendEmail:
         self.password = password
         self.email_recipient = email_recipient
 
-    def send_message(self, message):
+    def send_message(self, message, attach=None):
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
 
@@ -28,31 +28,32 @@ class SendEmail:
             if message:
                 msg.attach(MIMEText(message))
 
-            for file in os.listdir("attachments"):
-                filename = os.path.basename(file)
-                ftype, encoding = mimetypes.guess_type(file)
-                file_type, subtype = ftype.split("/")
+            if attach:
+                for file in os.listdir("attachments"):
+                    filename = os.path.basename(file)
+                    ftype, encoding = mimetypes.guess_type(file)
+                    file_type, subtype = ftype.split("/")
+            
+                    if file_type == 'text':
+                        with open(f"attachments/{file}") as f:
+                            file = MIMEText(f.read())
+                    elif file_type == 'image':
+                        with open(f"attachments/{file}", "rb") as f:
+                            file = MIMEImage(f.read(), subtype)
+                    elif file_type == 'audio':
+                        with open(f"attachments/{file}", "rb") as f:
+                            file = MIMEAudio(f.read(), subtype)
+                    elif file_type == 'application':
+                        with open(f"attachments/{file}", "rb") as f:
+                            file = MIMEApplication(f.read(), subtype)
+                    else:
+                        with open(f"attachments/{file}", "rb") as f:
+                            file = MIMEBase(file_type, subtype)
+                            file.set_payload(f.read())
+                            encoders.encode_base64(file)
 
-                if file_type == 'text':
-                    with open(f"attachments/{file}") as f:
-                        file = MIMEText(f.read())
-                elif file_type == 'image':
-                    with open(f"attachments/{file}", "rb") as f:
-                        file = MIMEImage(f.read(), subtype)
-                elif file_type == 'audio':
-                    with open(f"attachments/{file}", "rb") as f:
-                        file = MIMEAudio(f.read(), subtype)
-                elif file_type == 'application':
-                    with open(f"attachments/{file}", "rb") as f:
-                        file = MIMEApplication(f.read(), subtype)
-                else:
-                    with open(f"attachments/{file}", "rb") as f:
-                        file = MIMEBase(file_type, subtype)
-                        file.set_payload(f.read())
-                        encoders.encode_base64(file)
-
-                file.add_header('content-disposition', 'attachment', filename=filename)
-                msg.attach(file)
+                    file.add_header('content-disposition', 'attachment', filename=filename)
+                    msg.attach(file)
 
 
             server.sendmail(self.email_sender, self.email_recipient, msg.as_string())
@@ -66,6 +67,7 @@ password = input("Enter the sender password, if use gmail then enter application
 recipient = input("Enter the recipien email: ")
 
 msg = input("Enter any text you want to send: ")
+attach = input("Attach files from a directory? ")
 
 a = SendEmail(sender, password, recipient)
-print(a.send_message(msg))
+a.send_message(msg, attach)
